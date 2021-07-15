@@ -21,3 +21,15 @@ pip3 install -r requirements.txt
 ```
 python3 -m pytest backend/tests
 ```
+
+**Run the application and API**
+
+```
+python3 -m backend.app
+```
+
+**Run a peer instance**
+
+```
+export PEER=True && python3 -m backend.app
+```
