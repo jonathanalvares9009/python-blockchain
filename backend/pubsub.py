@@ -5,6 +5,7 @@ from pubnub.pnconfiguration import PNConfiguration
 from pubnub.callbacks import SubscribeCallback
 
 from backend.blockchain.block import Block
+from backend.wallet.transaction import Transaction
 
 PUBLISH_KEY = 'pub-c-726e6c5a-6932-4fba-99ee-808888c74bf4'
 
@@ -14,14 +15,16 @@ pnconfig.publish_key = 'pub-c-726e6c5a-6932-4fba-99ee-808888c74bf4'
 
 CHANNELS = {
     'TEST': 'TEST',
-    'BLOCK': 'BLOCK'
+    'BLOCK': 'BLOCK',
+    'TRANSACTION': 'TRANSACTION'
 }
 
 
 class Listener(SubscribeCallback):
 
-    def __init__(self, blockchain):
+    def __init__(self, blockchain, transaction_pool):
         self.blockchain = blockchain
+        self.transaction_pool = transaction_pool
 
     def message(self, pubnub, message):
         print(f'\n-- Channel: {message.channel} | Message : {message.message}')
@@ -37,6 +40,11 @@ class Listener(SubscribeCallback):
             except Exception as e:
                 print(f"\n -- Did not replace chain: {e}")
 
+        elif message.channel == CHANNELS['TRANSACTION']:
+            transaction = Transaction.from_json(message.message)
+            self.transaction_pool.set_transaction(transaction)
+            print('\n -- Set the new transaction in the transaction pool')
+
 
 class PubSub():
     """
@@ -44,10 +52,10 @@ class PubSub():
     Provides communication between the nodes of the blockchain network.
     """
 
-    def __init__(self, blockchain):
+    def __init__(self, blockchain, transaction_pool):
         self.pubnub = pubnub = PubNub(pnconfig)
         pubnub.subscribe().channels(CHANNELS.values()).execute()
-        pubnub.add_listener(Listener(blockchain))
+        pubnub.add_listener(Listener(blockchain, transaction_pool))
 
     def publish(self, channel, data):
         """
@@ -61,6 +69,12 @@ class PubSub():
         Broadcast a block to all nodes.
         """
         self.publish(CHANNELS['BLOCK'], block.to_json())
+
+    def broadcast_transacion(self, transaction):
+        """
+        Broadcast transaction to all nodes.
+        """
+        self.publish(CHANNELS['TRANSACTION'], transaction.to_json())
 
 
 def main():
